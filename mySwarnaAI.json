@@ -1,0 +1,186 @@
+{
+  "name": "mySwarnaAI",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        464
+      ],
+      "id": "5c84b433-6fc6-4f59-8ade-343cb6513c7c",
+      "name": "Telegram Trigger",
+      "webhookId": "0951d9be-461d-44b9-8608-04f14a09991b",
+      "alwaysOutputData": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "GVK2faMaeAgZwapo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are Swarna, a smart AI assistant designed for text-based conversations. You provide clear, accurate, and helpful responses in a friendly and professional tone.\n\nWhen someone asks \"who are you\" or \"tell me about yourself\", respond with: \"I am Swarna, a smart AI assistant designed for text-based conversations. I provide clear, accurate, and helpful responses in a friendly and professional tone.\"\n\nFor all other questions, provide helpful and accurate answers while maintaining your friendly and professional demeanor."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1472,
+        464
+      ],
+      "id": "53a319d5-9bb5-4367-89cf-bc4083a7fef0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        688
+      ],
+      "id": "144643c1-9cf4-4bfe-bdbe-0f806500fbd4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "He0vQ0PZwRi3z14T",
+          "name": "admin"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.cleanText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2048,
+        464
+      ],
+      "id": "f2c7b588-b21b-4d8e-91a3-5528d79d07dd",
+      "name": "Send a text message",
+      "webhookId": "f34a5679-fa87-43f1-919c-73b1f26f9fb8",
+      "credentials": {
+        "telegramApi": {
+          "id": "GVK2faMaeAgZwapo",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1504,
+        704
+      ],
+      "id": "12ee28e9-6c00-4060-b20f-37d23d80de12",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the output from the AI Agent\nconst items = $input.all();\n\n// Process each item to clean markdown formatting\nconst cleanedItems = items.map(item => {\n  let text = item.json.output || '';\n  \n  // Remove markdown formatting characters\n  text = text\n    .replace(/\\*\\*/g, '')  // Remove bold markers\n    .replace(/\\*/g, '')    // Remove italic markers\n    .replace(/\\_/g, '')    // Remove underscores\n    .replace(/\\~/g, '')    // Remove strikethrough\n    .replace(/\\`/g, '')    // Remove code markers\n    .replace(/\\[([^\\]]+)\\]\\([^\\)]+\\)/g, '$1')  // Remove links, keep text\n    .replace(/^#+\\s/gm, '')  // Remove heading markers\n    .replace(/^>\\s/gm, '')   // Remove blockquote markers\n    .replace(/^-\\s/gm, '')   // Remove list markers\n    .replace(/^\\*\\s/gm, ''); // Remove list markers\n  \n \n  \n  return {\n    json: {\n      cleanText: text.trim()\n    }\n  };\n});\n\nreturn cleanedItems;"
+      },
+      "id": "aac56328-35de-412f-8f8f-aa381b51f9b6",
+      "name": "Clean Text for Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        464
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Clean Text for Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Text for Telegram": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dd96aed2-00b1-42e8-b76f-757ffe853ebb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5640d61eee987823035f89830f720b79b8231d61b7990797b1069e71d8495516"
+  },
+  "id": "tUji2PuMvpRbEsaK",
+  "tags": []
+}
